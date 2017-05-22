@@ -49,14 +49,13 @@ def random_search(env, parameters):
 def policy_gradient():
     with tf.variable_scope("policy"):
         params = tf.get_variable("policy_parameters", [4, 2])
-        print("params", params)
         state = tf.placeholder("float", [None, 4])
         actions = tf.placeholder("float", [None, 2])
         linear = tf.matmul(state, params)
 
         probabilities = tf.nn.softmax(linear)
         print("probabilities", probabilities)
-        good_probabilities = tf.reduce_sum(tf.mul(probabilities, actions), reduction_indices=[1])
+        good_probabilities = tf.reduce_sum(tf.matmul(probabilities, actions), reduction_indices=[1])
         print("good_probabilities", good_probabilities)
         # maximize the log probability
         log_probabilities = tf.log(good_probabilities)
@@ -79,4 +78,41 @@ def value_gradient():
         return calculated, state, newvals, optimizer, loss
 
 
-policy_gradient()
+# tensorflow operations to compute probabilties for each action, given a state
+pl_probabilities, pl_state = policy_gradient()
+observation = env.reset()
+actions = []
+transitions = []
+for _ in xrange(200):
+    # calculate policy
+    obs_vector = np.expand_dims(observation, axis=0)
+    probs = sess.run(pl_probabilities,feed_dict={pl_state: obs_vector})
+    action = 0 if random.uniform(0,1) < probs[0][0] else 1
+    # record the transition
+    states.append(observation)
+    actionblank = np.zeros(2)
+    actionblank[action] = 1
+    actions.append(actionblank)
+    # take the action in the environment
+    old_observation = observation
+    observation, reward, done, info = env.step(action)
+    transitions.append((old_observation, action, reward))
+    totalreward += reward
+
+    if done:
+        break
+
+vl_calculated, vl_state, vl_newvals, vl_optimizer = value_gradient()
+update_vals = []
+for index, trans in enumerate(transitions):
+    obs, action, reward = trans
+    # calculate discounted monte-carlo return
+    future_reward = 0
+    future_transitions = len(transitions) - index
+    decrease = 1
+    for index2 in xrange(future_transitions):
+        future_reward += transitions[(index2) + index][2] * decrease
+        decrease = decrease * 0.97
+    update_vals.append(future_reward)
+update_vals_vector = np.expand_dims(update_vals, axis=1)
+sess.run(vl_optimizer, feed_dict={vl_state: states, vl_newvals: update_vals_vector})
