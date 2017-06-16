@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import random
 import gym
+import datetime
 from gym import wrappers
 import math
 import matplotlib.pyplot as plt
@@ -122,7 +123,7 @@ def run_episode(env, policy_grad, value_grad, sess):
 
 
 env = gym.make('CartPole-v0')
-# env = gym.wrappers.Monitor('CartPole-v0', 'pole/')
+env = gym.wrappers.Monitor(env, 'pole/' + str(datetime.datetime.now()))
 policy_grad = policy_gradient()
 value_grad = value_gradient()
 sess = tf.InteractiveSession()
@@ -144,8 +145,8 @@ for _ in range(training_iters):
 
 print("average reward per episode: " , t / training_iters)
 
-# for _ in range(5):
-#     run_episode_no_training(env, policy_grad, sess, 400)
+for _ in range(5):
+    run_episode_no_training(env, policy_grad, sess, 400)
 
 
 
